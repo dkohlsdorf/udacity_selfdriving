@@ -1,56 +1,139 @@
 # **Finding Lane Lines on the Road** 
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
-<img src="examples/laneLines_thirdPass.jpg" width="480" alt="Combined Image" />
 
-Overview
 ---
 
-When we drive, we use our eyes to decide where to go.  The lines on the road that show us where the lanes are act as our constant reference for where to steer the vehicle.  Naturally, one of the first things we would like to do in developing a self-driving car is to automatically detect lane lines using an algorithm.
+**Finding Lane Lines on the Road**
 
-In this project you will detect lane lines in images using Python and OpenCV.  OpenCV means "Open-Source Computer Vision", which is a package that has many useful tools for analyzing images.  
+The goals / steps of this project are the following:
+* Make a pipeline that finds lane lines on the road
+* Reflect on your work in a written report
 
-To complete the project, two files will be submitted: a file containing project code and a file containing a brief write up explaining your solution. We have included template files to be used both for the [code](https://github.com/udacity/CarND-LaneLines-P1/blob/master/P1.ipynb) and the [writeup](https://github.com/udacity/CarND-LaneLines-P1/blob/master/writeup_template.md).The code file is called P1.ipynb and the writeup template is writeup_template.md 
-
-To meet specifications in the project, take a look at the requirements in the [project rubric](https://review.udacity.com/#!/rubrics/322/view)
-
-
-Creating a Great Writeup
----
-For this project, a great writeup should provide a detailed response to the "Reflection" section of the [project rubric](https://review.udacity.com/#!/rubrics/322/view). There are three parts to the reflection:
-
-1. Describe the pipeline
-
-2. Identify any shortcomings
-
-3. Suggest possible improvements
-
-We encourage using images in your writeup to demonstrate how your pipeline works.  
-
-All that said, please be concise!  We're not looking for you to write a book here: just a brief description.
-
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup. Here is a link to a [writeup template file](https://github.com/udacity/CarND-LaneLines-P1/blob/master/writeup_template.md). 
-
-
-The Project
 ---
 
-## If you have already installed the [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) you should be good to go!   If not, you should install the starter kit to get started on this project. ##
+### Reflection
 
-**Step 1:** Set up the [CarND Term1 Starter Kit](https://classroom.udacity.com/nanodegrees/nd013/parts/fbf77062-5703-404e-b60c-95b78b2f3f9e/modules/83ec35ee-1e02-48a5-bdb7-d244bd47c2dc/lessons/8c82408b-a217-4d09-b81d-1bda4c6380ef/concepts/4f1870e0-3849-43e4-b670-12e6f2d4b7a7) if you haven't already.
+### 1. Lane Detection Pipeline
 
-**Step 2:** Open the code in a Jupyter Notebook
+My basic pipeline is shown in the Figure below.
+In the top row we see the original image,
+the gray scale conversion and finally the 
+blurred image. We use gaussian blur with 
+a `5x5` kernel.
 
-You will complete the project code in a Jupyter notebook.  If you are unfamiliar with Jupyter Notebooks, check out <A HREF="https://www.packtpub.com/books/content/basics-jupyter-notebook-and-python" target="_blank">Cyrille Rossant's Basics of Jupyter Notebook and Python</A> to get started.
+![Debug](test_images/solidWhiteCurve_debug.jpeg)
 
-Jupyter is an Ipython notebook where you can run blocks of code and see results interactively.  All the code for this project is contained in a Jupyter notebook. To start Jupyter in your browser, use terminal to navigate to your project directory and then run the following command at the terminal prompt (be sure you've activated your Python 3 carnd-term1 environment as described in the [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) installation instructions!):
+The first image in the
+second row shows the results of the edge
+detection as well as the corner points of
+the area of interest. The thresholds are
+`50` and `150`. As an area of interest
+we use the floowing trapezoid:
++ (80, 530)
++ (410, 330)
++ (580, 330) 
++ (900, 530)
 
-`> jupyter notebook`
+The area of interest I extracted is also 
+shown in the center bottom image. We then
+apply the hough tranform with the following
+parameters:
++ Resolution in pixels `rho`: 2
++ Angular resulution `theta`: 1 radian or `pi / 180`
++ Minimum number of intersections to detect line: 40
++ Minimum line length: 30
++ Maximum gap: 15
 
-A browser window will appear showing the contents of the current directory.  Click on the file called "P1.ipynb".  Another browser window will appear displaying the notebook.  Follow the instructions in the notebook to complete the project.  
+We process the detected lines in the draw
+lines function.
+For each line segment detected by the hough transform we calculate the slope as: 
+ 
++ `(y2 - y1) / (x2 - x1)`
 
-**Step 3:** Complete the project and submit both the Ipython notebook and the project writeup
+If the slope is negative we assign the points
+to the `left lane` and to the `right lane`
+otherwise. We save the `x1`s of the left
+and right lane and the `y1`s of the left
+and right lane. Furthermore, we save the slope `s`. Now we can get the center `x` and center
+`y` for each lane and the average slope:
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
++ `x = sum(x1 .. xn) / n`
++ `y = sum(y1 .. yn) / n`
++ `s = sum(s1 .. sn) / n`
 
+I also aim to smooth the slope using the previous slope in videos:
+
++ `momentum = 0.9`
++ `s(i) = (1.0 - momentum) * s(i) + momentum * s(i-1)`
+Which should reduce flickering.
+
+The general line formular is:
+
++ `y = x * s + b`
+
+First we can calculate the bias as:
+
++ `b = y - x * s`
+
+If we want to draw the line we need to
+know where the line will intersect
+the `min_y` and `max_y` of the area of interest. If we solve for the required
+x values:
+
++ `x_start = (min_y - b) / s`
++ `x_end   = (max_y - b) / s`
+
+We can then plot the lane as the line:
+
++ `(x_start, min_y)`
++ `(x_end, max_y)`
+
+Some results are shown below:
+![Debug](test_images/solidWhiteCurve_lane.jpeg)
+![Debug](test_images/solidYellowCurve_lane.jpeg)
+
+I implemented the actual pipeline as a python class for two reasons.
+First I keep all the intermediate results in each frame / image for potential
+plotting and debugging purposes. I also keep track of the previous slope
+when the pipeline is applied in a video. In order to reduce code
+duplication I also introduced an AverageLine class so that the
+left lane and right lane can be computed using the same code.
+
+### 2. Identify potential shortcomings with your current pipeline
+
+In my oppinion the pipeline has two main shortcomings (yellow vide)
++ i.  Sometimes there is are no lines found 
++ ii. Sometimes the line jumps 
+
+The first error happens with parameters that are too conservative. The
+second parameters happen with parameters that are too loose.
+In the first case we did not detect any lines for the left or right lane.
+Obviously we can not draw the lanes in that case.
+
+The second error happens when we detect too many lines. Especially
+at the top of the area of interest. Then the lanes get pulled
+over into the other lane.
+
+### 3. Suggest possible improvements to your pipeline
+
+My main ideas is automated parameter estimation.
+In the following I will sketch my idea.
+First I would create a dataset of color pixel that describe
+`lane` and `not lane`. Then I would build probability distributions
+of both: 
++ `P(rgb|lane)`
++ `P(rgp|not lane)`.
+
+Given a parameterization `theta` and an image dataset `x` I could compute the lanes as described
+in the pipeline section for each image: `lanes(x1, theta) .. lanes(xn, theta)`. For each pixel
+on a line `rgb1 ... rgbm` i would compute the log likelihood ratio: `score_i = log(P(rgb_i|lane))/log(P(rgb|not lane))`. And I could score a paramter set as: 
+
++ `score = sum([sum(score_i in image1) ... sum(score_i in imagen)])`
+
+Basically the log likelihood ratio is higher if the probability of the color under 
+the lane is higher for the `lane` class. So the total score is better the higher it is.
+Naively we could span a grid in the parameter space and then search the highest score.
+However, depending on the dataset size and the resolution of our parameters that could
+take very long. An approximation is to learn another model (in literature often a random forest or gaussian process) that takes as input the parameters `theta` and aims to predict the `score`
+without running the pipeline. The model has to be cheaper to evaluate than scoring the dataset.
+We can generate the training data by sampling solutions.
