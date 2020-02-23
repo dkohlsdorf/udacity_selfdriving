@@ -43,7 +43,6 @@ class CalibratedCamera(namedtuple("CalibratedCamera", "camera_mat distortion rot
         image_points  = []
         shape         = None
         for s, c, o in calibration_points(calibration_folder, nx, ny):
-            print(s, o.shape, c.shape)
             shape = s
             object_points.append(o)
             image_points.append(c)
@@ -55,13 +54,3 @@ class CalibratedCamera(namedtuple("CalibratedCamera", "camera_mat distortion rot
     def undistort(self, img):
         return cv2.undistort(img, self.camera_mat, self.distortion, None, self.camera_mat)
     
-
-test = cv2.imread("camera_cal/calibration10.jpg")
-cam = CalibratedCamera.from_images("camera_cal")
-undistorted = cam.undistort(test)
-
-plt.subplot(2,1,1)
-plt.imshow(test)
-plt.subplot(2,1,2)
-plt.imshow(undistorted)
-plt.show()
