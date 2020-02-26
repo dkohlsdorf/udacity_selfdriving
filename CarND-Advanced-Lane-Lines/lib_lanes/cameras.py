@@ -50,7 +50,6 @@ class CalibratedCamera(namedtuple("CalibratedCamera", "camera_mat distortion rot
             object_points, image_points, shape, None, None)
         return cls(camera_mat, distortion, rotation, translation)
 
-
     def undistort(self, img):
         return cv2.undistort(img, self.camera_mat, self.distortion, None, self.camera_mat)
     
