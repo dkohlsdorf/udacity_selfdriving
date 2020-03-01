@@ -1,6 +1,0 @@
-import numpy as np
-import cv2
-
-def draw_line(img, x, y, margin=100):
-    
-    left_line_window1 = np.array([np.transpose(np.vstack([left_fitx-margin, ploty]))])
