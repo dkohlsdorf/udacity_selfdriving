@@ -1,2 +1,2 @@
-model_checkpoint_path: "baseline_lenet"
-all_model_checkpoint_paths: "baseline_lenet"
+model_checkpoint_path: "baseline_dense"
+all_model_checkpoint_paths: "baseline_dense"
