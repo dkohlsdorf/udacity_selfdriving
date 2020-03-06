@@ -1,5 +1,6 @@
 from sklearn.utils import shuffle
 import tensorflow as tf
+from imblearn.tensorflow import balanced_batch_generator
 tf.compat.v1.disable_eager_execution()
 
 
@@ -24,6 +25,8 @@ def dense(x, n_labels, p_drop=0.5, mu=0.0, sigma=0.1):
     dense4_W = tf.Variable(tf.compat.v1.truncated_normal(shape=(128, n_labels), mean = mu, stddev = sigma))
     dense4_b = tf.Variable(tf.zeros(n_labels))    
     logits   = tf.matmul(dropout, dense4_W) + dense4_b
+   
+    debug = None
     return logits
 
 
@@ -57,6 +60,7 @@ def lenet(x, n_labels, mu=0.0, sigma=0.1):
     fc3_W  = tf.Variable(tf.compat.v1.truncated_normal(shape=(84, n_labels), mean = mu, stddev = sigma))
     fc3_b  = tf.Variable(tf.zeros(n_labels))
     logits = tf.matmul(fc2, fc3_W) + fc3_b
+    
     return logits
 
 
@@ -64,47 +68,53 @@ def lenet_pp(x, n_labels, p_drop=0.5, mu=0.0, sigma=0.1):
     '''
     Tune the lenet architecture.
     I basically added another layer of convolutions and increased the number of kernels for
-    all convolutional layers: [32 -> 64 -> 128]. I also added dropout and increased the dense
+    all convolutional layers. I also added dropout and increased the dense
     layer sizes.
     '''
     # More filters per layer
     conv1_W = tf.Variable(tf.compat.v1.truncated_normal(shape=(5, 5, 1, 32), mean = mu, stddev = sigma))
     conv1_b = tf.Variable(tf.zeros(32))
     conv1   = tf.nn.conv2d(x, conv1_W, strides=[1, 1, 1, 1], padding='VALID') + conv1_b
-    conv1 = tf.nn.relu(conv1)
-    conv1 = tf.nn.max_pool(conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
+    conv1a  = tf.nn.relu(conv1)
+    conv1p  = tf.nn.max_pool(conv1a, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
     
     conv2_W = tf.Variable(tf.compat.v1.truncated_normal(shape=(5, 5, 32, 64), mean = mu, stddev = sigma))
     conv2_b = tf.Variable(tf.zeros(64))
-    conv2   = tf.nn.conv2d(conv1, conv2_W, strides=[1, 1, 1, 1], padding='VALID') + conv2_b
-    conv2 = tf.nn.relu(conv2)
-    conv2 = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
+    conv2   = tf.nn.conv2d(conv1p, conv2_W, strides=[1, 1, 1, 1], padding='VALID') + conv2_b
+    conv2a  = tf.nn.relu(conv2)
+    conv2p  = tf.nn.max_pool(conv2a, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
     
     # Add 3x3 convolutional layer
     conv3_W = tf.Variable(tf.compat.v1.truncated_normal(shape=(3, 3, 64, 128), mean = mu, stddev = sigma))
     conv3_b = tf.Variable(tf.zeros(128))
-    conv3   = tf.nn.conv2d(conv2, conv3_W, strides=[1, 1, 1, 1], padding='VALID') + conv3_b
-    conv3 = tf.nn.relu(conv3)
+    conv3   = tf.nn.conv2d(conv2p, conv3_W, strides=[1, 1, 1, 1], padding='VALID') + conv3_b
+    conv3a  = tf.nn.relu(conv3)
     
-    fc0   = tf.compat.v1.layers.flatten(conv3)
+    fc0   = tf.compat.v1.layers.flatten(conv3a)
     
     # larger dense layers
-    fc1_W = tf.Variable(tf.compat.v1.truncated_normal(shape=(1152, 256), mean = mu, stddev = sigma))
-    fc1_b = tf.Variable(tf.zeros(256))
+    fc1_W = tf.Variable(tf.compat.v1.truncated_normal(shape=(1152, 512), mean = mu, stddev = sigma))
+    fc1_b = tf.Variable(tf.zeros(512))
     fc1   = tf.matmul(fc0, fc1_W) + fc1_b
     fc1    = tf.nn.relu(fc1)
    
-    # Add Dropout
-    dropout = tf.nn.dropout(fc1, p_drop)
-
-    fc2_W  = tf.Variable(tf.compat.v1.truncated_normal(shape=(256, 128), mean = mu, stddev = sigma))
-    fc2_b  = tf.Variable(tf.zeros(128))
-    fc2    = tf.matmul(dropout, fc2_W) + fc2_b
+    fc2_W  = tf.Variable(tf.compat.v1.truncated_normal(shape=(512, 256), mean = mu, stddev = sigma))
+    fc2_b  = tf.Variable(tf.zeros(256))
+    fc2    = tf.matmul(fc1, fc2_W) + fc2_b
     fc2    = tf.nn.relu(fc2)
+    
+    fc3_W  = tf.Variable(tf.compat.v1.truncated_normal(shape=(256, 128), mean = mu, stddev = sigma))
+    fc3_b  = tf.Variable(tf.zeros(128))
+    fc3    = tf.matmul(fc2, fc3_W) + fc3_b
+    fc3    = tf.nn.relu(fc3)
+
+    # Add Dropout
+    dropout = tf.nn.dropout(fc3, p_drop)
+
+    fc4_W  = tf.Variable(tf.compat.v1.truncated_normal(shape=(128, n_labels), mean = mu, stddev = sigma))
+    fc4_b  = tf.Variable(tf.zeros(n_labels))
+    logits = tf.matmul(fc3, fc4_W) + fc4_b
         
-    fc3_W  = tf.Variable(tf.compat.v1.truncated_normal(shape=(128, n_labels), mean = mu, stddev = sigma))
-    fc3_b  = tf.Variable(tf.zeros(n_labels))
-    logits = tf.matmul(fc2, fc3_W) + fc3_b
     return logits
 
 
@@ -163,4 +173,5 @@ def train(train_x, train_y, dev_x, dev_y, test_x, test_y, n_labels, model_func, 
         print("\tTest Accuracy  = {:.3f}".format(test_accuracy))
         print("\tDev Accuracy   = {:.3f}".format(dev_accuracy))
         print("\tTrain Accuracy = {:.3f}".format(train_accuracy))
-        return test_accuracy, dev_accuracy, train_accuracy
+        return (saver, x, logits)
+
