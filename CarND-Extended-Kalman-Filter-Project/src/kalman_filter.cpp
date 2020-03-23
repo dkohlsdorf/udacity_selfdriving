@@ -4,6 +4,16 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+double normalize_angle(double angle) {
+  while(angle < -M_PI) {
+    angle += 2 * M_PI;
+  }
+  while(angle > M_PI) {
+    angle -= 2 * M_PI;
+  }
+  return angle;
+}
+
 KalmanFilter::KalmanFilter() {}
 
 KalmanFilter::~KalmanFilter() {}
@@ -50,12 +60,3 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   P_ = (I - K * H_) * P_;
 }
 
-double normalize_angle(double angle) {
-  while(angle < -M_PI) {
-    angle += 2 * M_PI;
-  }
-  while(angle > M_PI) {
-    angle -= 2 * M_PI;
-  }
-  return angle;
-}
