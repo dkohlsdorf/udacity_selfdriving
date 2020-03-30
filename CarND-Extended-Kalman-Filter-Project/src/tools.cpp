@@ -13,11 +13,11 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
                               const vector<VectorXd> &ground_truth)
 {
    assert(estimations.size() > 0);
-   assert(estimations.size() == ground_truth.size);
-   assert(estimations[0].size() == ground_truth[0].size);
+   assert(estimations.size() == ground_truth.size());
+   assert(estimations[0].size() == ground_truth[0].size());
 
-   int d = estimations[0].size;
-   VectorXD rmse(d);
+   int d = estimations[0].size();
+   VectorXd rmse(d);
    for (int i = 0; i < d; i++)
    {
       rmse(i) = 0;
@@ -25,7 +25,7 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
 
    for (int i = 0; i < estimations.size(); i++)
    {
-      VectorXD err = ground_truth[i] - estimations[i];
+      VectorXd err = ground_truth[i] - estimations[i];
       err = err.array() * err.array();
       rmse += err;
    }
@@ -41,14 +41,14 @@ MatrixXd Tools::CalculateJacobian(const VectorXd &x_state)
    float velocity_x = x_state(2);
    float velocity_y = x_state(3);
 
-   float scaler1 = px * px + py * py;
-   float scaler2 = sqrt(c1);
-   float scaler3 = (c1 * c2);
+   float scaler1 = position_x * position_x + position_y * position_y;
+   float scaler2 = sqrt(scaler1);
+   float scaler3 = scaler1 * scaler2;
 
    MatrixXd Hj(3, 4);
-   if (fabs(c1) < 0.0001)
+   if (fabs(scaler1) < 0.0001)
    {
-      cout << "CalculateJacobian () - Error - Division by Zero" << endl;
+      std::cout << "CalculateJacobian () - Error - Division by Zero" << std::endl;
       return Hj;
    }
    float h00 = (position_x / scaler2);
