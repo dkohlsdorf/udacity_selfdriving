@@ -12,7 +12,7 @@ component.
 The final parameters were chosen manually. First, I tuned the proportional component keep the others out (set to zero).
 I came up with `kp=.1`. However, the car oscilated and then flew out of the curve. So I tuned the derivative component to `kd=4.0`.
 This got me around the track. The last term i set to a small value: `ki = .0005`.
-
+In the formular I also bounded the steering angle between -1 and 1.
 
 ---
 
